@@ -1,0 +1,101 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String // hashed
+  role      Role     @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  bookings  Booking[]
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+  SUB_AGENT
+}
+
+model Supplier {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  apiEndpoint String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Destination {
+  id          String   @id @default(uuid())
+  name        String
+  country     String
+  imageUrl    String?
+  packages    Package[]
+}
+
+model Package {
+  id            String      @id @default(uuid())
+  title         String
+  description   String
+  price         Float
+  currency      String      @default("USD")
+  durationDays  Int
+  destinationId String
+  destination   Destination @relation(fields: [destinationId], references: [id])
+  bookings      Booking[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Booking {
+  id            String   @id @default(uuid())
+  userId        String
+  packageId     String?
+  status        BookingStatus @default(PENDING)
+  totalAmount   Float
+  currency      String   @default("USD")
+  checkIn       DateTime?
+  checkOut      DateTime?
+  
+  user          User     @relation(fields: [userId], references: [id])
+  package       Package? @relation(fields: [packageId], references: [id])
+  payment       Payment?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  bookingId     String   @unique
+  amount        Float
+  status        PaymentStatus @default(PENDING)
+  provider      String   // e.g. Stripe, Razorpay
+  transactionId String?
+  
+  booking       Booking  @relation(fields: [bookingId], references: [id])
+  
+  createdAt     DateTime @default(now())
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
